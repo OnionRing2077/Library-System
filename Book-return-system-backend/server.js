@@ -13,8 +13,8 @@ connectDB();
 
 // Middleware
 app.use(cors()); // อนุญาตให้ Expo ต่อเข้ามาได้
-app.use(express.json({ limit: '50mb' })); // Increase to 50mb to be safe
-app.use(express.urlencoded({ limit: '50mb', extended: true })); // Add urlencoded limit
+app.use(express.json({ limit: '100mb' })); 
+app.use(express.urlencoded({ limit: '100mb', extended: true }));
 
 // Import Routes
 const authRoutes = require('./src/routes/authRoutes');
