@@ -58,16 +58,27 @@ exports.rejectBorrow = async (req, res) => {
 exports.returnBook = async (req, res) => {
     const { user_id, book_id } = req.body;
     try {
-        // หา Transaction ที่ approved และยังไม่คืน
-        const transaction = await Transaction.findOneAndUpdate(
-            { user_id, book_id, status: 'approved', return_date: null },
-            { return_date: new Date(), status: 'returned' }
-        );
+        // หา Transaction ที่ Active อยู่ (Allow Approved or Pending)
+        const transaction = await Transaction.findOne({
+            user_id,
+            book_id,
+            status: { $in: ['approved', 'pending'] },
+            return_date: null
+        });
 
-        if (!transaction) return res.status(400).json({ message: 'No active approved borrow record' });
+        if (!transaction) return res.status(400).json({ message: 'No active approved/pending borrow record' });
+
+        // ถ้า Pending -> ถือว่า Cancel Request (ลบหรือ Reject ก็ได้ แต่ในที่นี้ set returned เพื่อปิด job)
+        // ถ้า Approved -> คืนหนังสือปกติ
+        const isPending = transaction.status === 'pending';
+
+        transaction.return_date = new Date();
+        transaction.status = 'returned'; // หรือ 'cancelled' ถ้าสถานะรองรับ
+        await transaction.save();
 
         await Book.findByIdAndUpdate(book_id, { status: 'available' });
-        res.json({ message: 'Return successful' });
+
+        res.json({ message: isPending ? 'Request cancelled' : 'Return successful' });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
